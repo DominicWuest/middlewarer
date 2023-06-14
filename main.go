@@ -101,6 +101,15 @@ func (g *Generator) generateWrapperCode() {
 
 	// Write wrap function
 	fmt.Fprintf(g.wrapFunction, wrapFunctionFormat, g.targetName, structName)
+
+	// Write header of middleware struct
+	fmt.Fprintf(g.middlewareStruct, "// %s implements %s\n", structName, g.targetName)
+	fmt.Fprintf(g.middlewareStruct, "type %s struct {\n", structName)
+	fmt.Fprintf(g.middlewareStruct, "\twrapped %s\n", g.targetName)
+	fmt.Fprintln(g.middlewareStruct)
+
+	// Write footer of middleware struct
+	fmt.Fprint(g.middlewareStruct, "}\n")
 }
 
 // print writes the generated code to the provided io.Writer
