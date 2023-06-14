@@ -80,6 +80,10 @@ func (g *Generator) init(target string) {
 		log.Fatalf("Provided target object '%s' is not an interface", target)
 	}
 
+	if iFace.Empty() {
+		log.Fatalf("Trying to generate middlewarer for an empty interface")
+	}
+
 	g.target = iFace
 }
 
