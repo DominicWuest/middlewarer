@@ -16,15 +16,35 @@ import (
 
 var (
 	typeName = flag.String("type", "", "The interface type to wrap")
-	output   = flag.String("output", "", "output file name, default srcdir/<type>_middleware.go")
+	output   = flag.String("output", "", "Output file name, default srcdir/<type>_middleware.go")
+	debug    = flag.Bool("d", false, "Enable debug mode, write output to os.Stdout")
 )
 
 func main() {
+	log.SetPrefix("middlewarer: ")
+
 	flag.Parse()
-	if typeName == nil {
+	if *typeName == "" {
 		flag.Usage()
 		log.Printf("no type name supplied")
 		os.Exit(1)
+	}
+
+	var destWriter io.Writer
+
+	if *debug {
+		destWriter = os.Stdout
+	} else {
+		outFileName := fmt.Sprintf("%s_middleware.go", strings.ToLower(*typeName))
+		if *output != "" {
+			outFileName = *output
+		}
+
+		out, err := os.OpenFile(outFileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			log.Fatalf("Couldn't open output file %s - %v", outFileName, err)
+		}
+		destWriter = out
 	}
 
 	g := Generator{}
@@ -57,7 +77,7 @@ func main() {
 		log.Fatalf("Failed to format generated code - %v", err)
 	}
 
-	fmt.Println(string(res))
+	fmt.Fprint(destWriter, string(res))
 }
 
 type Generator struct {
