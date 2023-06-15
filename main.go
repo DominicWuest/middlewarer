@@ -168,8 +168,12 @@ func (g *Generator) generateInterfaceMethods(target *types.Interface) {
 		fun := target.Method(i)
 
 		// Generate the handler type
+		handlerTypeName := fmt.Sprintf("%sHandler", fun.Name())
+		fmt.Fprintf(g.handlerFuncTypes, "type %s %s\n", handlerTypeName, fun.Type())
 
 		// Generate the struct field
+		structFieldName := fmt.Sprintf("%sMiddleware", fun.Name())
+		fmt.Fprintf(g.middlewareStruct, "\t%s func(%[2]s) %[2]s\n", structFieldName, handlerTypeName)
 
 		// Generate the middleware method
 		g.generateMiddlewareMethod(fun)
