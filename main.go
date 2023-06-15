@@ -52,7 +52,7 @@ func main() {
 
 	g.generateWrapperCode()
 
-	cmd := exec.Command("gofmt")
+	cmd := exec.Command("goimports")
 
 	// Open stdin and stdout pipes
 	cmdIn := new(bytes.Buffer)
@@ -178,7 +178,7 @@ func (g *Generator) generateWrapperCode() {
 //	[5]: The function return type
 //	[6]: The function arguments list
 const interfaceMethodFormatReturn = `func (%[1]s *%[2]s) %[3]s(%[4]s) %[5]s {
-	fun := %[1]s.wrapped%[2]s.%[3]s
+	fun := %[1]s.wrapped.%[3]s
 	if %[1]s.%[3]sMiddleware != nil {
 		fun = %[1]s.%[3]sMiddleware(fun)
 	}
@@ -197,7 +197,7 @@ const interfaceMethodFormatReturn = `func (%[1]s *%[2]s) %[3]s(%[4]s) %[5]s {
 //	[4]: The function parameters
 //	[5]: The function arguments list
 const interfaceMethodFormatVoid = `func (%[1]s *%[2]s) %[3]s(%[4]s) {
-	fun := %[1]s.wrapped%[2]s.%[3]s
+	fun := %[1]s.wrapped.%[3]s
 	if %[1]s.%[3]sMiddleware != nil {
 		fun = %[1]s.%[3]sMiddleware(fun)
 	}
