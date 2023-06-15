@@ -11,7 +11,7 @@ type Foo interface {
 }
 ```
 
-`example_middleware.go`
+`foo_middleware.go`
 ```go
 // WrapFoo wraps the methods of the provided interface
 // in the provided middleware
@@ -39,6 +39,8 @@ func (m *FooMiddleware) Bar(a0 Baz) Quz {
 ```
 
 # Adding Middleware
+
+This example shows how to add a logger to `Foo`, declared in the [example section](#example).
 
 `logger.go`
 ```go
@@ -77,13 +79,15 @@ type Server interface {
 If you now want to wrap the `Request` method with middleware, but not the `Init` method, you can simply do:
 
 ```go
+// Get some server instance you want to wrap
 s := getServer()
 
+// Overwrite s with the wrapped instance
 s = WrapServer(s, ServerMiddleware{
     // InitMiddleware: nil
     RequestMiddleware: someMiddlewareFunc
 })
 ```
 
-When calling `Init` on `s`, no middleware gets called.
-However, when calling `Request`, the passed middleware function gets invoked.
+When calling `Init` on `s`, no middleware gets invoked.
+However, when calling `Request`, the passed middleware function gets called.
