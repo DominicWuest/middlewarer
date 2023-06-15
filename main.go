@@ -21,6 +21,7 @@ var (
 )
 
 func main() {
+	log.SetFlags(0)
 	log.SetPrefix("middlewarer: ")
 
 	flag.Parse()
@@ -64,6 +65,8 @@ func main() {
 	cmd.Stdin = cmdIn
 	cmdOut := new(bytes.Buffer)
 	cmd.Stdout = cmdOut
+	cmdStderr := new(bytes.Buffer)
+	cmd.Stderr = cmdStderr
 
 	// Print generated code to formatter
 	g.print(cmdIn)
@@ -74,12 +77,13 @@ func main() {
 	}
 
 	if err := cmd.Wait(); err != nil {
-		log.Fatalf("Command to format code failed - %v", err)
+		stderr, _ := io.ReadAll(cmdStderr)
+		log.Fatalf("Command to format code failed - %v\nStderr: %s\n", err, string(stderr))
 	}
 
 	res, err := io.ReadAll(cmdOut)
 	if err != nil {
-		log.Fatalf("Failed to format generated code - %v", err)
+		log.Fatalf("Failed to format generated code - %v\n", err)
 	}
 
 	fmt.Fprint(destWriter, string(res))
@@ -219,7 +223,10 @@ func (g *Generator) generateInterfaceMethods(target *types.Interface) {
 
 		// Generate the handler type
 		handlerTypeName := fmt.Sprintf("%sHandler", fun.Name())
-		fmt.Fprintf(g.handlerFuncTypes, "type %s %s\n", handlerTypeName, fun.Type())
+		sigBuf := new(bytes.Buffer)
+		types.WriteSignature(sigBuf, fun.Type().(*types.Signature), g.typeStringQuantifier)
+		sigString, _ := io.ReadAll(sigBuf)
+		fmt.Fprintf(g.handlerFuncTypes, "type %s func%s\n", handlerTypeName, string(sigString))
 
 		// Generate the struct field
 		structFieldName := fmt.Sprintf("%sMiddleware", fun.Name())
@@ -239,8 +246,9 @@ func (g *Generator) generateMiddlewareMethod(fun *types.Func) {
 
 	for i := 0; i < methodSignature.Params().Len(); i++ {
 		param := methodSignature.Params().At(i)
+		typeString := types.TypeString(param.Type(), g.typeStringQuantifier)
 		fmt.Fprintf(&argumentsList, "a%d, ", i)
-		fmt.Fprintf(&parametersList, "a%d %s, ", i, param.Type().String())
+		fmt.Fprintf(&parametersList, "a%d %s, ", i, typeString)
 	}
 
 	// Remove trailing commas
@@ -256,9 +264,14 @@ func (g *Generator) generateMiddlewareMethod(fun *types.Func) {
 			arguments,
 		)
 	} else {
-		returnType := methodSignature.Results().String()
-		if methodSignature.Results().Len() == 1 {
-			returnType = strings.Trim(returnType, "()")
+		returnTypes := make([]string, methodSignature.Results().Len())
+		for i := 0; i < methodSignature.Results().Len(); i++ {
+			returnTypes[i] = types.TypeString(methodSignature.Results().At(i).Type(), g.typeStringQuantifier)
+		}
+		returnType := strings.Join(returnTypes, ", ")
+
+		if methodSignature.Results().Len() != 1 {
+			returnType = "(" + returnType + ")"
 		}
 
 		fmt.Fprintf(g.interfaceMethods, interfaceMethodFormatReturn,
@@ -288,4 +301,12 @@ func (g *Generator) print(w io.Writer) {
 	fmt.Fprintln(w)
 	w.Write(g.interfaceMethods.Bytes())
 	fmt.Fprintln(w)
+}
+
+// typeStringQuantifier is to be used as the quantifier for calls to [types.TypeString]
+func (g Generator) typeStringQuantifier(p *types.Package) string {
+	if p.Path() == g.p.PkgPath {
+		return ""
+	}
+	return p.Name()
 }
