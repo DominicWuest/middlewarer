@@ -40,6 +40,9 @@ type Generator struct {
 	target     *types.Interface
 	targetName string
 
+	targetFirstLetter string
+	structName        string
+
 	// Buffers for the different sections of the generated code
 	wrapFunction     *bytes.Buffer
 	middlewareStruct *bytes.Buffer
@@ -101,14 +104,15 @@ func (g *Generator) generateWrapperCode() {
 	g.handlerFuncTypes = new(bytes.Buffer)
 	g.interfaceMethods = new(bytes.Buffer)
 
-	structName := fmt.Sprintf("%sMiddleware", g.targetName)
+	g.structName = fmt.Sprintf("%sMiddleware", g.targetName)
+	g.targetFirstLetter = strings.ToLower(g.targetName[0:1])
 
 	// Write wrap function
-	fmt.Fprintf(g.wrapFunction, wrapFunctionFormat, g.targetName, structName)
+	fmt.Fprintf(g.wrapFunction, wrapFunctionFormat, g.targetName, g.structName)
 
 	// Write header of middleware struct
-	fmt.Fprintf(g.middlewareStruct, "// %s implements %s\n", structName, g.targetName)
-	fmt.Fprintf(g.middlewareStruct, "type %s struct {\n", structName)
+	fmt.Fprintf(g.middlewareStruct, "// %s implements %s\n", g.structName, g.targetName)
+	fmt.Fprintf(g.middlewareStruct, "type %s struct {\n", g.structName)
 	fmt.Fprintf(g.middlewareStruct, "\twrapped %s\n", g.targetName)
 	fmt.Fprintln(g.middlewareStruct)
 
@@ -118,13 +122,99 @@ func (g *Generator) generateWrapperCode() {
 	fmt.Fprint(g.middlewareStruct, "}\n")
 }
 
+// interfaceMethodFormatReturn is the format string for interface methods
+// which have a return value
+// The arguments for the format string are:
+//
+//	[1]: The first letter of the receiver type
+//	[2]: The receiver type
+//	[3]: The function name
+//	[4]: The function parameters
+//	[5]: The function return type
+//	[6]: The function arguments list
+const interfaceMethodFormatReturn = `func (%[1]s *%[2]s) %[3]s(%[4]s) %[5]s {
+	fun := %[1]s.wrapped%[2]s.%[3]s
+	if %[1]s.%[3]sMiddleware != nil {
+		fun = %[1]s.%[3]sMiddleware(fun)
+	}
+	return fun(%[6]s)
+}
+
+`
+
+// interfaceMethodFormatReturn is the format string for interface methods
+// which have no return value
+// The arguments for the format string are:
+//
+//	[1]: The first letter of the receiver type
+//	[2]: The receiver type
+//	[3]: The function name
+//	[4]: The function parameters
+//	[5]: The function arguments list
+const interfaceMethodFormatVoid = `func (%[1]s *%[2]s) %[3]s(%[4]s) {
+	fun := %[1]s.wrapped%[2]s.%[3]s
+	if %[1]s.%[3]sMiddleware != nil {
+		fun = %[1]s.%[3]sMiddleware(fun)
+	}
+	fun(%[5]s)
+}
+
+`
+
 // generateInterfaceMethods generates the function declarations of
 // the methods required by the wrapper to implement
 func (g *Generator) generateInterfaceMethods(target *types.Interface) {
 	for i := 0; i < target.NumMethods(); i++ {
 		fun := target.Method(i)
-		// TODO: Generate the method
-		fmt.Println(fun)
+
+		// Generate the handler type
+
+		// Generate the struct field
+
+		// Generate the middleware method
+		g.generateMiddlewareMethod(fun)
+	}
+}
+
+func (g *Generator) generateMiddlewareMethod(fun *types.Func) {
+
+	methodSignature := fun.Type().(*types.Signature)
+
+	parametersList := strings.Builder{}
+	argumentsList := strings.Builder{}
+
+	for i := 0; i < methodSignature.Params().Len(); i++ {
+		param := methodSignature.Params().At(i)
+		fmt.Fprintf(&argumentsList, "a%d, ", i)
+		fmt.Fprintf(&parametersList, "a%d %s, ", i, param.Type().String())
+	}
+
+	// Remove trailing commas
+	parameters := strings.TrimSuffix(parametersList.String(), ", ")
+	arguments := strings.TrimSuffix(argumentsList.String(), ", ")
+
+	if methodSignature.Results().Len() == 0 {
+		fmt.Fprintf(g.interfaceMethods, interfaceMethodFormatVoid,
+			g.targetFirstLetter,
+			g.structName,
+			fun.Name(),
+			parameters,
+			arguments,
+		)
+	} else {
+		returnType := methodSignature.Results().String()
+		if methodSignature.Results().Len() == 1 {
+			returnType = strings.Trim(returnType, "()")
+		}
+
+		fmt.Fprintf(g.interfaceMethods, interfaceMethodFormatReturn,
+			g.targetFirstLetter,
+			g.structName,
+			fun.Name(),
+			parameters,
+			returnType,
+			arguments,
+		)
 	}
 }
 
