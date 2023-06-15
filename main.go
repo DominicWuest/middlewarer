@@ -112,8 +112,20 @@ func (g *Generator) generateWrapperCode() {
 	fmt.Fprintf(g.middlewareStruct, "\twrapped %s\n", g.targetName)
 	fmt.Fprintln(g.middlewareStruct)
 
+	g.generateInterfaceMethods(g.target)
+
 	// Write footer of middleware struct
 	fmt.Fprint(g.middlewareStruct, "}\n")
+}
+
+// generateInterfaceMethods generates the function declarations of
+// the methods required by the wrapper to implement
+func (g *Generator) generateInterfaceMethods(target *types.Interface) {
+	for i := 0; i < target.NumMethods(); i++ {
+		fun := target.Method(i)
+		// TODO: Generate the method
+		fmt.Println(fun)
+	}
 }
 
 // print writes the generated code to the provided io.Writer
