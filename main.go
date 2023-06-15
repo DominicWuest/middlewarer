@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 
 	"golang.org/x/tools/go/packages"
@@ -28,11 +29,35 @@ func main() {
 
 	g := Generator{}
 	g.init(*typeName)
-	fmt.Println(g.target)
 
 	g.generateWrapperCode()
 
-	g.print(os.Stdout)
+	cmd := exec.Command("gofmt")
+
+	// Open stdin and stdout pipes
+	cmdIn := new(bytes.Buffer)
+	cmd.Stdin = cmdIn
+	cmdOut := new(bytes.Buffer)
+	cmd.Stdout = cmdOut
+
+	// Start command
+	if err := cmd.Start(); err != nil {
+		log.Fatalf("Failed to start format command - %v", err)
+	}
+
+	// Print generated code to formatter
+	g.print(cmdIn)
+
+	if err := cmd.Wait(); err != nil {
+		log.Fatalf("Command to format code failed - %v", err)
+	}
+
+	res, err := io.ReadAll(cmdOut)
+	if err != nil {
+		log.Fatalf("Failed to format generated code - %v", err)
+	}
+
+	fmt.Println(string(res))
 }
 
 type Generator struct {
