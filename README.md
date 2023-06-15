@@ -5,7 +5,7 @@ Generate a middleware framework for any Go interface
 
 `example.go`:
 ```go
-// go:generate middlewarer -type=Foo
+//go:generate middlewarer -type=Foo
 type Foo interface {
     Bar(Baz) Quz
 }
@@ -67,7 +67,7 @@ This allows adding middleware to select methods.
 Take for example 
 
 ```go
-// go:generate middlewarer -type=Server
+//go:generate middlewarer -type=Server
 type Server interface {
     Init()
     Request() Response
