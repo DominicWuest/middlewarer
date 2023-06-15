@@ -45,6 +45,11 @@ func main() {
 			log.Fatalf("Couldn't open output file %s - %v", outFileName, err)
 		}
 		destWriter = out
+		defer func() {
+			if err := out.Close(); err != nil {
+				log.Fatalf("Failed to close output file - %v", err)
+			}
+		}()
 	}
 
 	g := Generator{}
@@ -60,13 +65,13 @@ func main() {
 	cmdOut := new(bytes.Buffer)
 	cmd.Stdout = cmdOut
 
+	// Print generated code to formatter
+	g.print(cmdIn)
+
 	// Start command
 	if err := cmd.Start(); err != nil {
 		log.Fatalf("Failed to start format command - %v", err)
 	}
-
-	// Print generated code to formatter
-	g.print(cmdIn)
 
 	if err := cmd.Wait(); err != nil {
 		log.Fatalf("Command to format code failed - %v", err)
