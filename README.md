@@ -1,6 +1,15 @@
 # middlewarer
 Generate a middleware framework for any Go interface
 
+# Installation
+
+Requirements:
+- Go 1.20 or newer
+
+```bash
+go install github.com/DominicWuest/middlewarer@latest
+```
+
 # Example
 
 `example.go`:
