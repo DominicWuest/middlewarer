@@ -56,8 +56,10 @@ func main() {
 	g := Generator{}
 	g.init(*typeName)
 
+	// Generate the actual code
 	g.generateWrapperCode()
 
+	// Format the code and add imports
 	cmd := exec.Command("goimports")
 
 	// Open stdin and stdout pipes
@@ -89,13 +91,14 @@ func main() {
 	fmt.Fprint(destWriter, string(res))
 }
 
+// The Generator generates the code
 type Generator struct {
-	p          *packages.Package
-	target     *types.Interface
+	p          *packages.Package // The package in which this generator was invoked
+	target     *types.Interface  // The target we want to wrap
 	targetName string
 
-	targetFirstLetter string
-	structName        string
+	targetFirstLetter string // The first letter of the target name, used as the receiver
+	structName        string // The name of the middleware struct we are generating
 
 	// Buffers for the different sections of the generated code
 	wrapFunction     *bytes.Buffer
@@ -144,6 +147,11 @@ func (g *Generator) init(target string) {
 	g.target = iFace
 }
 
+// Format string of the function returning a wrapped instance of the passed interface
+// The arguments for the format string are:
+//
+//	[1]: The interface type name we are wrapping
+//	[2]: The name of the middleware struct
 const wrapFunctionFormat = `// Wrap%[1]s returns the passed %[1]s wrapped in the middleware defined in %[2]s
 func Wrap%[1]s(toWrap %[1]s, wrapper %[2]s) %[1]s {
 	wrapper.wrapped = toWrap
@@ -237,8 +245,8 @@ func (g *Generator) generateInterfaceMethods(target *types.Interface) {
 	}
 }
 
+// generateMiddlewareMethod generates the code needed by the method implementation of the function
 func (g *Generator) generateMiddlewareMethod(fun *types.Func) {
-
 	methodSignature := fun.Type().(*types.Signature)
 
 	parametersList := strings.Builder{}
